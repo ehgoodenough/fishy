@@ -15,15 +15,14 @@ section
 	margin-bottom: 2em;
 }
 
-
-textarea
+input
 {
-	width: 15em;
-	height: 10em;
-	display: block;
-	margin-bottom: 1em;
-
-	resize: none;
 	font: inherit;
-	outline: none;
+	padding: 0.2em 0.4em;
+}
+
+.button
+{
+	cursor: pointer;
+	text-decoration: underline;
 }

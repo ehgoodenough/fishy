@@ -3,57 +3,29 @@
 </head>
 
 <body>
-    {{> input}}
-    {{> output}}
+    {{> router}}
 </body>
 
-<template name="input">
-    <section>
-        <h2>Where are you?</h2>
-        <input id="location" name="location" type="text"/>
-    </section>
-    <section>
-        <h2>How long is the fish?</h2>
-        <div>
-            <input type="radio" id="length-1" value="1" name="length"/>
-            <label for="length-1">0 to 2 inches</label>
-        </div>
-        <div>
-            <input type="radio" id="length-2" value="2" name="length"/>
-            <label for="length-2">2 to 6 inches</label>
-        </div>
-        <div>
-            <input type="radio" id="length-3" value="3" name="length"/>
-            <label for="length-3">6 or more inches</label>
-        </div>
-    </section>
-    <section>
-        <h2>What colors are prominent?</h2>
-        <div>
-            <input type="checkbox" name="colors" value="red" id="color-red"/>
-            <label for="color-red">Red</label>
-        </div>
-        <div>
-            <input type="checkbox" name="colors" value="white" id="color-white"/>
-            <label for="color-white">White</label>
-        </div>
-        <div>
-            <input type="checkbox" name="colors" value="blue" id="color-blue"/>
-            <label for="color-blue">Blue</label>
-        </div>
-        <div>
-            <input type="checkbox" name="colors" value="yellow" id="color-yellow"/>
-            <label for="color-yellow">Yellow</label>
-        </div>
-    </section>
+<template name="router">
+    {{#if view 1}}
+        {{> location}}
+    {{/if}}
 </template>
 
-<template name="output">
+
+<template name="location">
+    <form>
+        <input type="text" name="address"/>
+        <input type="submit"/>
+    </form>
+    <div class="button">
+        Use my current location.
+    </div>
     <ul>
         {{#each fish}}
-            <div>
-                {{name}}
-            </div>
+            <li>
+                {{scientificName}}
+            </li>
         {{/each}}
     </ul>
 </template>
