@@ -9,12 +9,6 @@ if(Meteor.isClient) {
     Session.set("view", 1)
     Session.set("location", null)
 
-    Template.router.helpers({
-        view: function(view) {
-            return Session.get("view")
-        }
-    })
-
     Tracker.autorun(function() {
         var location = Session.get("location")
         if(location != undefined) {
@@ -22,14 +16,20 @@ if(Meteor.isClient) {
         }
     })
 
+    Template.router.helpers({
+        view: function(view) {
+            return Session.get("view")
+        }
+    })
+
     Template.location.helpers({
         "fish": function() {
-            return Fish.find({})
+            return Fish.find({}, {sort: {number: 1}, limit: 10})
         }
     })
 
     Template.location.events({
-        "click .button": function() {
+        "click button": function() {
             navigator.geolocation.getCurrentPosition(function(result) {
                 var location = encodeLocation(extendLocation({
                     latitude: result.coords.latitude,
@@ -104,12 +104,15 @@ if(Meteor.isServer) {
             Fish.remove({})
             HTTP.call("get", "http://www.fishnet2.net/api/v1/taxa/?api=fishack2015&cols=ScientificName&p=" + location, function(error, results) {
                 if(error == undefined) {
-                    var content = results.content
-                    content = content.split(new RegExp(",[0-9]+\r\n"))
-                    content = content.slice(1, -1)
-                    content.map(function(name) {
+                    var contents = results.content.split(new RegExp("\r\n"))
+                    contents = contents.slice(1, -1)
+                    contents.map(function(content) {
+                        var number = content.substring(content.indexOf(",") + 1)
+                        var name = content.substring(0, content.indexOf(","))
                         var _id = Fish.insert({
-                            scientificName: name
+                            "name": name,
+                            "number": number,
+                            "images": new Array()
                         })
                         Meteor.call("decorate", _id, name)
                     })
@@ -122,13 +125,39 @@ if(Meteor.isServer) {
             if(name[1] != undefined) {
                 request += "&species=" + name[1]
             }
-            //request += "&fields=Dangerous"
             HTTP.call("get", request, function(error, results) {
                 if(error == undefined) {
-                    var content = results.content
-                    console.log(content)
+                    results.data.data.map(function(result) {
+                        if(result.PicPreferredName != undefined) {
+                            Fish.update(_id, {
+                                "$push": {
+                                    "images": "http://fishbase.org/images/species/" + result.PicPreferredName
+                                }
+                            })
+                        }
+                    })
+                }
+            })
+            findImages(name, function(images) {
+                for(index in images) {
+                    var image = images[index]
+                    Fish.update(_id, {
+                        "$push": {
+                            "images": image
+                        }
+                    })
                 }
             })
         }
     })
+}
+
+function findImages(query, callback) {
+    var url = 'http://ajax.googleapis.com/ajax/services/search/images'
+    var query = 'v=1.0&imgsz=large&rsz=5&q=' + encodeURIComponent(query)
+    HTTP.call("get", url + '?' + query, function(error, response) {
+        if(error == undefined) {
+            callback(response.data.responseData.results.map(function(image) {return image.url}))
+        }
+    });
 }

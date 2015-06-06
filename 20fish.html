@@ -1,5 +1,5 @@
 <head>
-    <title>20 Questions for Fish</title>
+    <title>Fishy</title>
 </head>
 
 <body>
@@ -15,17 +15,20 @@
 
 <template name="location">
     <form>
+        <button>Use my current location.</button>
         <input type="text" name="address"/>
         <input type="submit"/>
     </form>
-    <div class="button">
-        Use my current location.
-    </div>
-    <ul>
+    <section>
         {{#each fish}}
-            <li>
-                {{scientificName}}
-            </li>
+            <div class="fish">
+                <h3>{{name}}</h3>
+                <div class="imglist">
+                    {{#each images}}
+                        <img src="{{this}}"/>
+                    {{/each}}
+                </div>
+            </div>
         {{/each}}
-    </ul>
+    </section>
 </template>

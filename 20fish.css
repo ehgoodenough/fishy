@@ -12,17 +12,39 @@ body
 
 section
 {
-	margin-bottom: 2em;
+	margin: 2em auto;
 }
 
-input
+input, button
 {
 	font: inherit;
 	padding: 0.2em 0.4em;
 }
 
-.button
+input[type=submit], button
 {
+	outline: none;
 	cursor: pointer;
-	text-decoration: underline;
+
+	height: 1.75em;
+	border-style: solid;
+	border-radius: 0.25em;
+	background-color: #EEE;
+}
+
+.imglist
+{
+	height: 7em;
+	width: 100%;
+	overflow: hidden;
+}
+
+.imglist > img
+{
+	height: 7em;
+}
+
+.fish:not(:last-child)
+{
+	margin-bottom: 2em;
 }
