@@ -4,6 +4,7 @@ if(Meteor.isClient) {
 
     Meteor.startup(function() {
         GoogleMaps.load()
+        Fish.remove({})
     })
 
     Session.set("view", 1)
@@ -13,12 +14,6 @@ if(Meteor.isClient) {
         var location = Session.get("location")
         if(location != undefined) {
             Meteor.call("poll", location)
-        }
-    })
-
-    Template.router.helpers({
-        view: function(view) {
-            return Session.get("view")
         }
     })
 
@@ -122,9 +117,17 @@ if(Meteor.isServer) {
         "decorate": function(_id, name) {
             name = name.split(" ")
             var request = "http://fishbase.ropensci.org/species?genus=" + name[0]
+            var link = "http://www.fishbase.org/summary/" + name[0]
             if(name[1] != undefined) {
                 request += "&species=" + name[1]
+                link += "-" + name[1]
             }
+            link += ".html"
+            Fish.update(_id, {
+                "$set": {
+                    "link": link
+                }
+            })
             HTTP.call("get", request, function(error, results) {
                 if(error == undefined) {
                     results.data.data.map(function(result) {

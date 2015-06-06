@@ -6,13 +6,17 @@
 
 body
 {
-	padding: 2em;
 	font-family: sans-serif;
 }
 
-section
+h1 > img
 {
-	margin: 2em auto;
+	width: 100%
+}
+
+form, section
+{
+	margin: 2em;
 }
 
 input, button
@@ -30,6 +34,14 @@ input[type=submit], button
 	border-style: solid;
 	border-radius: 0.25em;
 	background-color: #EEE;
+}
+
+button
+{
+	width: 100%;
+	max-width: 20em;
+	display: block;
+	margin-bottom: 1em;
 }
 
 .imglist
