@@ -1,4 +1,4 @@
-var genus = {
+var genuses = {
     "0": "Abalistes",
     "1": "Abbottina",
     "2": "Ablabys",
@@ -5035,41 +5035,59 @@ var genus = {
     "5033": "Zungaro",
     "5034": "Zungaropsis"
 }
+var count = 0
 
 var HTTP = require("http")
+var Async = require("async")
 var Mongo = require("mongojs")("mongodb://contributor:awesome@ds041032.mongolab.com:41032/fishyid", ["fish"])
 
-scrapeCoordinatesFromFishnet2(5034)
+scrapeCoordinatesFromFishnet2()
 
-function scrapeCoordinatesFromFishnet2(index) {
-    var url = "http://www.fishnet2.net/api/v1/occurrence/" + "?api=" + "fishack2015" + "&t=" + genus[index]
-        + "&cols=ScientificName,Latitude,Longitude,CoordinateUncertaintyInMeters"
-    HTTP.get(url, function(response) {
-        var data = new String()
-        response.on("data", function(chunk) {
-            data += chunk
-        })
-        response.on("end", function() {
-            data = data.split(new RegExp("\r\n"))
-            data = data.slice(1, -1)
-            data = data.map(function(datum) {
-                datum = datum.split(",")
-                datum[0] = datum[0].split(" ")
-                datum[3] = datum[3] || undefined
-                datum = {
-                    "genus": datum[0][0],
-                    "species": datum[0][1],
-                    "coords": {
-                        "latitude": datum[2],
-                        "longitude": datum[1],
-                        "uncertainty": datum[3]
+function scrapeCoordinatesFromFishnet2(genus) {
+    Async.eachSeries(genuses, function(genus, callback) {
+        console.log("Started", genus)
+        var url = "http://www.fishnet2.net/api/v1/occurrence/" + "?api=" + "fishack2015"
+            + "&t=" + genus + "&cols=ScientificName,Latitude,Longitude,CoordinateUncertaintyInMeters"
+        HTTP.get(url, function(response) {
+            var data = new String()
+            response.on("data", function(chunk) {
+                data += chunk
+            })
+            response.on("end", function() {
+                data = data.split(new RegExp("\r\n"))
+                data = data.slice(1, -1)
+                data = data.map(function(datum) {
+                    datum = datum.split(",")
+                    datum[0] = datum[0].split(" ")
+                    datum[0][1] = datum[0][1] || "sp."
+                    datum[3] = datum[3] || undefined
+                    datum = {
+                        "genus": datum[0][0],
+                        "species": datum[0][1],
+                        "coords": {
+                            "latitude": datum[2],
+                            "longitude": datum[1],
+                            "uncertainty": datum[3]
+                        }
+                    }
+                    if(datum.coords.uncertainty == undefined) {
+                        delete datum.coords.uncertainty
+                    }
+                    if(datum.coords.latitude == ""
+                    || datum.coords.longitude == "") {
+                        return null
+                    }
+                    return datum
+                })
+                for(var index = 0; index < data.length; index++) {
+                    if(data[index] == null) {
+                        data.splice(index, 1)
+                        index -= 1
                     }
                 }
-                return datum
-            })
-            data.forEach(function(datum) {
-                if(datum.coords.latitude != ""
-                && datum.coords.longitude != "") {
+                var count = 0
+                var total = data.length
+                Async.each(data, function(datum, callback) {
                     Mongo.fish.update({
                         "genus": datum.genus,
                         "species": datum.species
@@ -5077,16 +5095,23 @@ function scrapeCoordinatesFromFishnet2(index) {
                         "$addToSet": {
                             "occurences": datum.coords
                         }
-                    }, function(error, success, datum) {
-                        if(error) {
-                            console.log(error)
-                        } else {
-                            console.log(datum.genus + " " + datum.species)
-                        }
+                    }, function(datum) {
+                        count += 1
+                        console.log(count +" / " + total + " = " + (count / total)
+                                    + " -> ", datum.genus + " " + datum.species)
+                        callback(null)
                     }.bind(this, datum))
-                }
+                }, function(error) {
+                    if(error != undefined) {
+                        console.log(error)
+                    } else {
+                        console.log("Finished", genus)
+                        callback()
+                    }
+                })
             })
-            scrapeCoordinatesFromFishnet2(index - 1)
         })
+    }, function() {
+        console.log("Hooray! You're done!")
     })
 }
