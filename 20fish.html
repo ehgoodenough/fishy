@@ -3,37 +3,49 @@
 </head>
 
 <body>
-    <h1>
-        <img src="./thumbnail.png"/>
-    </h1>
-    {{> location}}
+    {{> header}}
+    {{> query}}
 </body>
 
-<template name="location">
-    <form>
-        <button>Use my current location.</button>
-        <input type="text" name="address"/>
-        <input type="submit"/>
-    </form>
-    <script>
-        function onError(image) {
-            image.style = "display: none"
-        }
-    </script>
+<template name="header">
+    <header>
+        <img alt="Fishy"
+             src="./logo.png"/>
+    </header>
+</template>
+
+<template name="query">
     <section>
-        {{#each fish}}
-            <div class="fish">
-                <a href="{{link}}"
-                    target="_blank">
-                    <h3>{{name}}</h3>
-                    <div class="imglist">
-                        {{#each images}}
-                            <img src="{{this}}"
-                                onerror="onError(this)"/>
-                        {{/each}}
-                    </div>
-                </a>
+        <form>
+            <div>
+                <button>Use my current location.</button>
             </div>
+            <br/>
+            <div>
+                <input type="text" name="address"/>
+            </div>
+        </form>
+    </section>
+    <section>
+        {{location}}
+    </section>
+    <section>
+        {{#each fishes}}
+            {{> fish}}
         {{/each}}
     </section>
+</template>
+
+<template name="fish">
+    <div class="fish">
+        <a href="{{link}}" target="_blank">
+            {{#if name}}
+                <h3>{{name}}</h3>
+            {{/if}}
+            <h3>{{sciname}}</h3>
+        </a>
+        {{#if image}}
+            <img src="{{image}}"/>
+        {{/if}}
+    </div>
 </template>

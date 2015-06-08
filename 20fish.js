@@ -1,166 +1,184 @@
 var Fish = new Mongo.Collection("fish")
 
-if(Meteor.isClient) {
+if(Meteor.isServer) {
+    
+    Meteor.startup(function() {
+        process.env.MONGO_URL = "mongodb://contributor:awesome@ds041032.mongolab.com:41032/fishyid"
+        
+        /*var url = "http://www.fishnet2.net/api/v1/occurrence"
+        HTTP.call("get", url, {
+            "api": "fishack2015",
+            "t": "scomberomorus",
+            "cols": [
+                "ScientificName",
+                "Latitude",
+                "Longitude"
+            ].join(",")
+        }, function(error, results) {
+            console.log(results, error)
+            if(error == undefined) {
+                var contents = results.content
+                contents = contents.split(new RegExp("\r\n"))
+                contents = contents.slice(1, -1)
+                contents.map(function(content) {
+                    var number = content.substring(content.indexOf(",") + 1)
+                    var name = content.substring(0, content.indexOf(","))
+                    console.log({
+                        "name": name,
+                        "number": number
+                    })
+                })
+            }
+        })*/
+    })
+}
 
+if(Meteor.isClient) {
+    
     Meteor.startup(function() {
         GoogleMaps.load()
-        Fish.remove({})
     })
-
-    Session.set("view", 1)
+    
     Session.set("location", null)
-
-    Tracker.autorun(function() {
-        var location = Session.get("location")
-        if(location != undefined) {
-            Meteor.call("poll", location)
+    
+    Template.query.helpers({
+        "fishes": function() {
+            return Fish.find({}, {limit: 200})
+        },
+        "location": function() {
+            return Session.get("location")
         }
     })
-
-    Template.location.helpers({
-        "fish": function() {
-            return Fish.find({}, {sort: {number: 1}, limit: 10})
-        }
-    })
-
-    Template.location.events({
+    
+    Template.query.events({
         "click button": function() {
-            navigator.geolocation.getCurrentPosition(function(result) {
-                var location = encodeLocation(extendLocation({
-                    latitude: result.coords.latitude,
-                    longitude: result.coords.longitude,
-                    radius: 100
-                }))
-                Session.set("location", location)
-                //Session.set("view", 2)
+            navigator.geolocation.getCurrentPosition(function(data) {
+                Session.set("location", encodePolygon(extendPoint({
+                    latitude: data.coords.latitude,
+                    longitude: data.coords.longitude
+                }, 100)))
             })
         },
         "submit form": function(event) {
             event.preventDefault()
             var address = {"address": event.target.address.value}
-            new google.maps.Geocoder().geocode(address, function(results, status) {
+            new google.maps.Geocoder().geocode(address, function(data, status) {
                 if(status == google.maps.GeocoderStatus.OK) {
-                    var location = encodeLocation(extendLocation({
-                        latitude: results[0].geometry.location.A,
-                        longitude: results[0].geometry.location.F,
-                        radius: 100
-                    }))
-                    Session.set("location", location)
-                    //Session.set("view", 2)
+                    Session.set("location", encodePolygon(extendPoint({
+                        latitude: data[0].geometry.location.A,
+                        longitude: data[0].geometry.location.F
+                    }, 100)))
                 }
             })
         }
     })
+    
+    Template.fish.helpers({
+        "link": function() {
+            var url = "http://www.fishbase.org/summary/"
+            url += this.SpecCode
+            return url
+        },
+        "name": function() {
+            if(this.FBname) {
+                return this.FBname
+            }
+        },
+        "name": function() {
+            var name = this.Genus
+            if(this.Species) {
+                name += " " + this.Species
+            }
+            return name
+        },
+        "image": function() {
+            if(this.PicPreferredName) {
+                var url = "http://fishbase.org/images/species/"
+                url += this.PicPreferredName
+                console.log(url)
+                return url
+            }
+        }
+    })
 }
 
-function extendLocation(point) {
+// extendPoint({latitude: Number, longitude: Number}, Number)
+// Given a point with a latitude and longitude, this function
+// returns an array of points in a square around that point,
+// computing to adjust for the spherical shape of our world.
+
+function extendPoint(point, radius) {
     var offset = {
-        longitude: point.radius * (0.1 / ((Math.PI / 180) * 6378.1 * Math.cos(point.latitude))),
-        latitude: point.radius * (0.1 / 111.132)
+        latitude: radius * (0.1 / 111.132),
+        longitude: radius * (0.1 / ((Math.PI / 180) * 6378.1 * Math.cos(point.latitude)))
     }
-    var points = []
-    points.push({
+    var polygon = []
+    polygon.push({
         latitude: point.latitude + offset.latitude,
         longitude: point.longitude + offset.longitude
     })
-    points.push({
+    polygon.push({
         latitude: point.latitude + offset.latitude,
         longitude: point.longitude - offset.longitude
     })
-    points.push({
+    polygon.push({
         latitude: point.latitude - offset.latitude,
         longitude: point.longitude - offset.longitude
     })
-    points.push({
+    polygon.push({
         latitude: point.latitude - offset.latitude,
         longitude: point.longitude + offset.longitude
     })
-    return points
+    return polygon
 }
 
-function encodeLocation(points) {
+// encodePolygon([{latitude: Number, longitude: Number} ...])
+// Given an array of points with a latitude and longitude, this
+// function returns a string of those points encoded into WKT.
+// http://www.wikiwand.com/en/Well-known_text
+
+function encodePolygon(polygon) {
     var string = "POLYGON(("
-    for(var index in points) {
-        var point = points[index]
-        string += point.longitude + " " + point.latitude + ", "
+    for(var index in polygon) {
+        var point = polygon[index]
+        string += point.longitude + " "
+                + point.latitude + ", "
     }
-    string += points[0].longitude + " " + points[0].latitude + "))"
+    string += polygon[0].longitude + " "
+            + polygon[0].latitude + "))"
     return string
 }
 
-if(Meteor.isServer) {
+// scrapeSpeciesFromFishbase()
+// This function will iterate through Fishbase to scrape
+// and save any and all data about species of fish. It
+// should be used with some caution.
 
-    Meteor.startup(function() {
-        Fish.remove({})
-    })
-
-    Meteor.methods({
-        "poll": function(location) {
-            Fish.remove({})
-            HTTP.call("get", "http://www.fishnet2.net/api/v1/taxa/?api=fishack2015&cols=ScientificName&p=" + location, function(error, results) {
-                if(error == undefined) {
-                    var contents = results.content.split(new RegExp("\r\n"))
-                    contents = contents.slice(1, -1)
-                    contents.map(function(content) {
-                        var number = content.substring(content.indexOf(",") + 1)
-                        var name = content.substring(0, content.indexOf(","))
-                        var _id = Fish.insert({
-                            "name": name,
-                            "number": number,
-                            "images": new Array()
-                        })
-                        Meteor.call("decorate", _id, name)
-                    })
+function scrapeSpeciesFromFishbase() {
+    if(Fish.find({}).count() == 0) {
+        var url = "http://fishbase.ropensci.org/species"
+        for(var count = 0; count < 32792; count += 12) {
+            var response = HTTP.call("get", url, {
+                "params": {
+                    "offset": count,
+                    "limit": 12
                 }
             })
-        },
-        "decorate": function(_id, name) {
-            name = name.split(" ")
-            var request = "http://fishbase.ropensci.org/species?genus=" + name[0]
-            var link = "http://www.fishbase.org/summary/" + name[0]
-            if(name[1] != undefined) {
-                request += "&species=" + name[1]
-                link += "-" + name[1]
+            var fishes = JSON.parse(response.content)["data"]
+            for(var index in fishes) {
+                var fish = fishes[index]
+                for(var key in fish) {
+                    if(fish[key] <= 0 || fish[key] == null) {
+                        delete fish[key]
+                    }
+                }
+                console.log(count + index + ":", fish["SpecCode"])
+                Fish.upsert({
+                    "SpecCode": fish["SpecCode"]
+                }, {
+                    "$set": fish
+                })
             }
-            link += ".html"
-            Fish.update(_id, {
-                "$set": {
-                    "link": link
-                }
-            })
-            HTTP.call("get", request, function(error, results) {
-                if(error == undefined) {
-                    results.data.data.map(function(result) {
-                        if(result.PicPreferredName != undefined) {
-                            Fish.update(_id, {
-                                "$push": {
-                                    "images": "http://fishbase.org/images/species/" + result.PicPreferredName
-                                }
-                            })
-                        }
-                    })
-                }
-            })
-            findImages(name, function(images) {
-                for(index in images) {
-                    var image = images[index]
-                    Fish.update(_id, {
-                        "$push": {
-                            "images": image
-                        }
-                    })
-                }
-            })
         }
-    })
-}
-
-function findImages(query, callback) {
-    var url = 'http://ajax.googleapis.com/ajax/services/search/images'
-    var query = 'v=1.0&imgsz=large&rsz=5&q=' + encodeURIComponent(query)
-    HTTP.call("get", url + '?' + query, function(error, response) {
-        if(error == undefined) {
-            callback(response.data.responseData.results.map(function(image) {return image.url}))
-        }
-    });
+    }
 }
