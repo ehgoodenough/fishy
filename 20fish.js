@@ -1,35 +1,8 @@
 var Fish = new Mongo.Collection("fish")
 
 if(Meteor.isServer) {
-    
     Meteor.startup(function() {
-        process.env.MONGO_URL = "mongodb://contributor:awesome@ds041032.mongolab.com:41032/fishyid"
-        
-        /*var url = "http://www.fishnet2.net/api/v1/occurrence"
-        HTTP.call("get", url, {
-            "api": "fishack2015",
-            "t": "scomberomorus",
-            "cols": [
-                "ScientificName",
-                "Latitude",
-                "Longitude"
-            ].join(",")
-        }, function(error, results) {
-            console.log(results, error)
-            if(error == undefined) {
-                var contents = results.content
-                contents = contents.split(new RegExp("\r\n"))
-                contents = contents.slice(1, -1)
-                contents.map(function(content) {
-                    var number = content.substring(content.indexOf(",") + 1)
-                    var name = content.substring(0, content.indexOf(","))
-                    console.log({
-                        "name": name,
-                        "number": number
-                    })
-                })
-            }
-        })*/
+        process.env.MONGO_URL = mongodb://consumer:random@ds041032.mongolab.com:41032/fishyid
     })
 }
 
@@ -43,7 +16,7 @@ if(Meteor.isClient) {
     
     Template.query.helpers({
         "fishes": function() {
-            return Fish.find({}, {limit: 200})
+            return Fish.find({}, {limit: 10})
         },
         "location": function() {
             return Session.get("location")
@@ -95,7 +68,6 @@ if(Meteor.isClient) {
             if(this.PicPreferredName) {
                 var url = "http://fishbase.org/images/species/"
                 url += this.PicPreferredName
-                console.log(url)
                 return url
             }
         }
@@ -147,38 +119,4 @@ function encodePolygon(polygon) {
     string += polygon[0].longitude + " "
             + polygon[0].latitude + "))"
     return string
-}
-
-// scrapeSpeciesFromFishbase()
-// This function will iterate through Fishbase to scrape
-// and save any and all data about species of fish. It
-// should be used with some caution.
-
-function scrapeSpeciesFromFishbase() {
-    if(Fish.find({}).count() == 0) {
-        var url = "http://fishbase.ropensci.org/species"
-        for(var count = 0; count < 32792; count += 12) {
-            var response = HTTP.call("get", url, {
-                "params": {
-                    "offset": count,
-                    "limit": 12
-                }
-            })
-            var fishes = JSON.parse(response.content)["data"]
-            for(var index in fishes) {
-                var fish = fishes[index]
-                for(var key in fish) {
-                    if(fish[key] <= 0 || fish[key] == null) {
-                        delete fish[key]
-                    }
-                }
-                console.log(count + index + ":", fish["SpecCode"])
-                Fish.upsert({
-                    "SpecCode": fish["SpecCode"]
-                }, {
-                    "$set": fish
-                })
-            }
-        }
-    }
 }
